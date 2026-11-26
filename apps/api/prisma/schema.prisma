@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  battery   Battery?
+}
+
+model Battery {
+  id            String   @id @default(uuid())
+  customerId    String   @unique
+  customer      Customer @relation(fields: [customerId], references: [id])
+  serialNumber  String   @unique
+  model         String
+  capacityKwh   Float
+  nickname      String?
+  exportLimitKw Float
+}

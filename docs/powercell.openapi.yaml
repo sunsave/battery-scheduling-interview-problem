@@ -1,0 +1,339 @@
+openapi: 3.1.0
+info:
+  title: Powercell API
+  version: 1.0.0
+  description: |
+    The Powercell API lets you read and replace the charging schedule on a
+    Powercell battery's inverter.
+
+    ## Schedules
+
+    A schedule divides the day into exactly 8 slots, `slot1` to `slot8`. Each
+    slot has a start time and a mode. A slot runs until the next slot starts,
+    and `slot8` runs until midnight, so the 8 slots always cover the whole day.
+
+    * All 8 slots must be provided.
+    * `slot1` must start at `00:00:00`.
+    * Start times can be any time of day, and must be in strictly increasing
+      order from `slot1` to `slot8`. Slots don't overlap.
+    * Adjacent slots can have the same mode, so a schedule that needs fewer
+      than 8 changes can still provide all 8 slots.
+    * All times are local to the inverter.
+
+    ## Authentication
+
+    Every request must include the API key in an `X-API-Key` header.
+
+    ## Rate limiting
+
+    The API key is limited to 60 requests per minute and 10 requests per
+    second. Requests over either limit get a `429 Too Many Requests` response
+    with a `Retry-After` header giving the number of seconds to wait before
+    retrying.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: https://api.powercell.test
+    description: Production
+security:
+  - apiKey: []
+tags:
+  - name: Schedule
+    description: Read and replace the schedule on an inverter.
+paths:
+  /v1/inverter/{id}/schedule:
+    parameters:
+      - $ref: '#/components/parameters/InverterId'
+    get:
+      tags:
+        - Schedule
+      operationId: getInverterSchedule
+      summary: Get an inverter's schedule
+      description: Returns the schedule currently on the inverter.
+      responses:
+        '200':
+          description: The schedule currently on the inverter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schedule'
+              examples:
+                schedule:
+                  $ref: '#/components/examples/Schedule'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/InverterNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        5XX:
+          $ref: '#/components/responses/ServerError'
+    put:
+      tags:
+        - Schedule
+      operationId: replaceInverterSchedule
+      summary: Replace an inverter's schedule
+      description: |
+        Replaces the whole schedule on the inverter. All 8 slots must be
+        provided; there is no way to update a single slot.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Schedule'
+            examples:
+              schedule:
+                $ref: '#/components/examples/Schedule'
+      responses:
+        '200':
+          description: The schedule was replaced. Returns the schedule now on the inverter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schedule'
+              examples:
+                schedule:
+                  $ref: '#/components/examples/Schedule'
+        '400':
+          description: The schedule is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missingSlot:
+                  summary: Fewer than 8 slots
+                  value:
+                    code: INVALID_SCHEDULE
+                    message: 'slot8 is required: a schedule must have exactly 8 slots.'
+                firstSlotNotAtMidnight:
+                  summary: slot1 doesn't start at midnight
+                  value:
+                    code: INVALID_SCHEDULE
+                    message: 'slot1 must start at 00:00:00, but starts at 01:00:00.'
+                startTimesOutOfOrder:
+                  summary: Start times out of order
+                  value:
+                    code: INVALID_SCHEDULE
+                    message: 'slot4 must start after slot3 (07:00:00), but starts at 06:30:00.'
+                invalidMode:
+                  summary: Unknown mode
+                  value:
+                    code: INVALID_SCHEDULE
+                    message: 'slot2.mode must be one of CHARGE, DISCHARGE, SELF_CONSUMPTION.'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/InverterNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        5XX:
+          $ref: '#/components/responses/ServerError'
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: The global API key issued by Powercell.
+  parameters:
+    InverterId:
+      name: id
+      in: path
+      required: true
+      description: The battery's serial number.
+      schema:
+        type: string
+      example: PC-2024-000123
+  schemas:
+    Schedule:
+      type: object
+      description: |
+        A full day's schedule of exactly 8 slots. Each slot runs until the next
+        slot starts, and `slot8` runs until midnight. Start times must be in
+        strictly increasing order from `slot1` to `slot8`.
+      required:
+        - slot1
+        - slot2
+        - slot3
+        - slot4
+        - slot5
+        - slot6
+        - slot7
+        - slot8
+      additionalProperties: false
+      properties:
+        slot1:
+          $ref: '#/components/schemas/FirstSlot'
+        slot2:
+          $ref: '#/components/schemas/Slot'
+        slot3:
+          $ref: '#/components/schemas/Slot'
+        slot4:
+          $ref: '#/components/schemas/Slot'
+        slot5:
+          $ref: '#/components/schemas/Slot'
+        slot6:
+          $ref: '#/components/schemas/Slot'
+        slot7:
+          $ref: '#/components/schemas/Slot'
+        slot8:
+          $ref: '#/components/schemas/Slot'
+    FirstSlot:
+      description: The first slot of the day, which must start at midnight.
+      allOf:
+        - $ref: '#/components/schemas/Slot'
+        - type: object
+          properties:
+            start:
+              const: '00:00:00'
+    Slot:
+      type: object
+      description: |
+        A period of the day during which the battery runs in one mode. The slot
+        runs from its start time until the next slot's start time, or until
+        midnight for `slot8`.
+      required:
+        - start
+        - mode
+      additionalProperties: false
+      properties:
+        start:
+          type: string
+          description: The local time the slot starts, as `HH:MM:SS` in 24-hour time.
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'
+          examples:
+            - '04:00:00'
+        mode:
+          $ref: '#/components/schemas/Mode'
+    Mode:
+      type: string
+      description: |
+        What the battery does during the slot.
+
+        * `CHARGE`: charge the battery from the grid.
+        * `DISCHARGE`: discharge the battery to the home and grid.
+        * `SELF_CONSUMPTION`: charge from surplus solar and discharge to meet
+          the home's demand, without importing from the grid to charge.
+      enum:
+        - CHARGE
+        - DISCHARGE
+        - SELF_CONSUMPTION
+    Error:
+      type: object
+      description: Details of why a request failed.
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: A machine-readable error code.
+          enum:
+            - INVALID_SCHEDULE
+            - UNAUTHORIZED
+            - INVERTER_NOT_FOUND
+            - RATE_LIMIT_EXCEEDED
+            - INTERNAL_ERROR
+            - SERVICE_UNAVAILABLE
+        message:
+          type: string
+          description: A human-readable description of the error.
+  responses:
+    Unauthorized:
+      description: The API key is missing or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missingApiKey:
+              summary: Missing API key
+              value:
+                code: UNAUTHORIZED
+                message: The X-API-Key header is required.
+            invalidApiKey:
+              summary: Invalid API key
+              value:
+                code: UNAUTHORIZED
+                message: The API key is invalid.
+    InverterNotFound:
+      description: No inverter exists with this serial number.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            inverterNotFound:
+              summary: Inverter not found
+              value:
+                code: INVERTER_NOT_FOUND
+                message: No inverter found with serial number PC-2024-999999.
+    TooManyRequests:
+      description: |
+        The API key has exceeded its rate limit of 60 requests per minute or 10
+        requests per second.
+      headers:
+        Retry-After:
+          description: The number of seconds to wait before retrying.
+          schema:
+            type: integer
+            minimum: 1
+          example: 30
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            rateLimitExceeded:
+              summary: Rate limit exceeded
+              value:
+                code: RATE_LIMIT_EXCEEDED
+                message: Rate limit exceeded. Retry after 30 seconds.
+    ServerError:
+      description: The server failed to handle the request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            internalError:
+              summary: Internal server error
+              value:
+                code: INTERNAL_ERROR
+                message: An unexpected error occurred.
+            serviceUnavailable:
+              summary: Service unavailable
+              value:
+                code: SERVICE_UNAVAILABLE
+                message: The service is temporarily unavailable.
+  examples:
+    Schedule:
+      summary: A typical day's schedule
+      value:
+        slot1:
+          start: '00:00:00'
+          mode: SELF_CONSUMPTION
+        slot2:
+          start: '02:00:00'
+          mode: CHARGE
+        slot3:
+          start: '05:00:00'
+          mode: SELF_CONSUMPTION
+        slot4:
+          start: '07:00:00'
+          mode: SELF_CONSUMPTION
+        slot5:
+          start: '13:30:00'
+          mode: CHARGE
+        slot6:
+          start: '16:00:00'
+          mode: DISCHARGE
+        slot7:
+          start: '19:00:00'
+          mode: SELF_CONSUMPTION
+        slot8:
+          start: '23:30:00'
+          mode: SELF_CONSUMPTION

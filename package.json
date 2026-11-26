@@ -1,0 +1,32 @@
+{
+  "name": "battery-scheduling",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=24.15 <25"
+  },
+  "scripts": {
+    "dev": "concurrently --names api,web --prefix-colors blue,magenta \"npm run dev --workspace=api\" \"npm run dev --workspace=web\"",
+    "test": "npm run test --workspaces --if-present && npm run test:e2e --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write .",
+    "docs:lint": "redocly lint docs/*.yaml",
+    "check": "npm run typecheck && npm run lint && npm run docs:lint && npm run test",
+    "docs:preview": "serve docs --listen 8080"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^2.83.0",
+    "concurrently": "^10.0.7",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.4.6",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
+    "serve": "^14.2.4",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.74.0"
+  }
+}

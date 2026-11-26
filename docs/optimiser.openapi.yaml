@@ -1,0 +1,224 @@
+openapi: 3.1.0
+info:
+  title: Optimiser API
+  version: 1.0.0
+  summary: Optimised battery schedules for customers.
+  description: |
+    Returns the optimised battery schedule for a customer for the next day.
+
+    A schedule is a list of half-hourly slots. Each slot says which mode the
+    customer's battery should be in from the slot's start time until the next
+    slot begins.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /
+    description: Relative to wherever the Optimiser API is deployed.
+tags:
+  - name: Schedules
+    description: Battery schedules produced by the optimiser.
+paths:
+  /customer/{id}/schedule/optimise:
+    get:
+      tags:
+        - Schedules
+      operationId: getOptimisedSchedule
+      summary: Get tomorrow's optimised schedule
+      description: |
+        Returns the customer's optimised battery schedule for the next day.
+
+        The schedule always contains exactly 48 half-hour slots, from
+        `00:00:00` to `23:30:00` in order, including on days when the clocks
+        change. All times are local.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The customer's ID.
+          schema:
+            type: string
+          example: 00000000-0000-0000-0000-000000000001
+      responses:
+        '200':
+          description: The customer's schedule for the next day.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimisedSchedule'
+              example:
+                for: '2026-11-27'
+                schedule:
+                  - start: '00:00:00'
+                    mode: FORCE_CHARGE
+                  - start: '00:30:00'
+                    mode: FORCE_CHARGE
+                  - start: '01:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '01:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '02:00:00'
+                    mode: FORCE_CHARGE
+                  - start: '02:30:00'
+                    mode: FORCE_CHARGE
+                  - start: '03:00:00'
+                    mode: FORCE_CHARGE
+                  - start: '03:30:00'
+                    mode: FORCE_CHARGE
+                  - start: '04:00:00'
+                    mode: FORCE_CHARGE
+                  - start: '04:30:00'
+                    mode: FORCE_CHARGE
+                  - start: '05:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '05:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '06:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '06:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '07:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '07:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '08:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '08:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '09:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '09:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '10:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '10:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '11:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '11:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '12:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '12:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '13:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '13:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '14:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '14:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '15:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '15:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '16:00:00'
+                    mode: FORCE_DISCHARGE
+                  - start: '16:30:00'
+                    mode: FORCE_DISCHARGE
+                  - start: '17:00:00'
+                    mode: FORCE_DISCHARGE
+                  - start: '17:30:00'
+                    mode: FORCE_DISCHARGE
+                  - start: '18:00:00'
+                    mode: FORCE_DISCHARGE
+                  - start: '18:30:00'
+                    mode: FORCE_DISCHARGE
+                  - start: '19:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '19:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '20:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '20:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '21:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '21:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '22:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '22:30:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '23:00:00'
+                    mode: SELF_CONSUMPTION
+                  - start: '23:30:00'
+                    mode: SELF_CONSUMPTION
+        '404':
+          description: The customer doesn't exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: Customer 00000000-0000-0000-0000-000000000001 not found
+        '422':
+          description: The customer has no battery.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: Customer 00000000-0000-0000-0000-000000000001 has no battery
+components:
+  schemas:
+    OptimisedSchedule:
+      type: object
+      description: A customer's battery schedule for a single day.
+      required:
+        - for
+        - schedule
+      properties:
+        for:
+          type: string
+          format: date
+          description: The local date the schedule applies to, as an ISO 8601 date.
+          example: '2026-11-27'
+        schedule:
+          type: array
+          description: |
+            Exactly 48 half-hour slots, from `00:00:00` to `23:30:00` in order,
+            including on days when the clocks change.
+          minItems: 48
+          maxItems: 48
+          items:
+            $ref: '#/components/schemas/ScheduleSlot'
+    ScheduleSlot:
+      type: object
+      description: The mode the battery should be in for one half-hour slot.
+      required:
+        - start
+        - mode
+      properties:
+        start:
+          type: string
+          description: The local time the slot starts, as `HH:MM:SS`.
+          pattern: '^([01][0-9]|2[0-3]):(00|30):00$'
+          example: '00:30:00'
+        mode:
+          $ref: '#/components/schemas/BatteryMode'
+    BatteryMode:
+      type: string
+      description: |
+        The mode the battery should be in.
+
+        - `FORCE_CHARGE`: charge the battery.
+        - `FORCE_DISCHARGE`: discharge the battery.
+        - `SELF_CONSUMPTION`: use the battery to meet the home's own demand.
+      enum:
+        - FORCE_CHARGE
+        - FORCE_DISCHARGE
+        - SELF_CONSUMPTION
+      example: FORCE_CHARGE
+    Error:
+      type: object
+      description: An error response.
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: A human-readable description of the error.
+          example: Customer 00000000-0000-0000-0000-000000000001 not found
