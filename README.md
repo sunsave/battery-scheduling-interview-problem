@@ -1,6 +1,6 @@
 # Battery scheduling
 
-A NestJS API and a Next.js web app for viewing a customer's battery, backed by Prisma and SQLite.
+A NestJS API and a Next.js web app for viewing a customer's battery.
 
 ## Prerequisites
 
@@ -33,7 +33,9 @@ The seeded customers have IDs `00000000-0000-0000-0000-000000000001` to `0000000
 
 ### Database
 
-The API uses SQLite through Prisma. Run these from `apps/api`:
+In development the API uses SQLite through Prisma. In production we use Postgres instead.
+
+Run these from `apps/api`:
 
 | Command              | What it does                                          |
 | -------------------- | ----------------------------------------------------- |
